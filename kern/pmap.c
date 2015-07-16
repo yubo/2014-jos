@@ -103,7 +103,7 @@ boot_alloc(uint32_t n)
 		char *next = nextfree;
 		nextfree = ROUNDUP((char *)(nextfree + n), PGSIZE);
 		if(nextfree > next){
-			cprintf("boot_alloc at %x %x %x\n", next, n, nextfree);
+			cprintf("boot_alloc at 0x%x -> 0x%x %d/%x\n", next, nextfree, n, n);
 			return next;
 		}else{
 			panic("boot_alloc: out of memory \n");
@@ -146,6 +146,7 @@ mem_init(void)
 	// following line.)
 
 	// Permissions: kernel R, user R
+	cprintf("kern_pgdir[%d] = 0x%x\n", PDX(UVPT), PADDR(kern_pgdir));
 	kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
 
 	//////////////////////////////////////////////////////////////////////
@@ -186,8 +187,8 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
+	cprintf("UPAGES -> pages map pages read-only %x\n", PADDR(pages));
 	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U);
-	cprintf("map pages read-only %x\n", PADDR(pages));
 
 	//////////////////////////////////////////////////////////////////////
 	// Map the 'envs' array read-only by the user at linear address UENVS
@@ -413,15 +414,21 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 	int i;
 	pte_t *pte;
 
+	//cprintf("[[[virtual address %x mapped to physical address %x size %d/%x\n", va, pa, size, size);
 	for (i = 0; i < size / PGSIZE; i++){
 		pte = pgdir_walk(pgdir, (void*)va, 1);
 		if(!pte)
 			panic("panic boot_map_region() out of memory\n");
 		*pte = pa | perm | PTE_P;
+		if(i == 0)
+			cprintf("boot_map_region PDX:%d va:0x%08x pa:0x%08x\n",
+				PDX(va), va, pa);
 		va += PGSIZE;
 		pa += PGSIZE;
 	}
-	cprintf("virtual address %x mapped to physical address %x\n", va, pa);
+	cprintf("boot_map_region PDX:%d va:0x%08x pa:0x%08x\n",
+		PDX(va - PGSIZE), va - PGSIZE, pa - PGSIZE);
+	//cprintf("]]]virtual address %x mapped to physical address %x\n", va, pa);
 }
 
 //
@@ -790,7 +797,6 @@ check_va2pa(pde_t *pgdir, uintptr_t va)
 	if (!(*pgdir & PTE_P))
 		return ~0;
 	p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
-	cprintf("check_va2pa %x %x\n", p[PTX(va)], PTE_P);
 	if (!(p[PTX(va)] & PTE_P))
 		return ~0;
 	return PTE_ADDR(p[PTX(va)]);
