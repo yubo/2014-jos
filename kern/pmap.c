@@ -105,7 +105,7 @@ boot_alloc(uint32_t n)
 		char *next = nextfree;
 		nextfree = ROUNDUP((char *)(nextfree + n), PGSIZE);
 		if(nextfree > next){
-			cprintf("boot_alloc at 0x%x -> 0x%x %d/%x\n", next, nextfree, n, n);
+			//cprintf("boot_alloc at 0x%x -> 0x%x %d/%x\n", next, nextfree, n, n);
 			return next;
 		}else{
 			panic("boot_alloc: out of memory \n");
@@ -148,7 +148,7 @@ mem_init(void)
 	// following line.)
 
 	// Permissions: kernel R, user R
-	cprintf("kern_pgdir[%d] = 0x%x\n", PDX(UVPT), PADDR(kern_pgdir));
+	//cprintf("kern_pgdir[%d] = 0x%x\n", PDX(UVPT), PADDR(kern_pgdir));
 	kern_pgdir[PDX(UVPT)] = PADDR(kern_pgdir) | PTE_U | PTE_P;
 
 	//////////////////////////////////////////////////////////////////////
@@ -191,7 +191,7 @@ mem_init(void)
 	//      (ie. perm = PTE_U | PTE_P)
 	//    - pages itself -- kernel RW, user NONE
 	// Your code goes here:
-	cprintf("UPAGES -> pages map pages read-only %x\n", PADDR(pages));
+	//cprintf("UPAGES -> pages map pages read-only %x\n", PADDR(pages));
 	boot_map_region(kern_pgdir, UPAGES, PTSIZE, PADDR(pages), PTE_U);
 
 
@@ -216,7 +216,7 @@ mem_init(void)
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
 	boot_map_region(kern_pgdir, KSTACKTOP - KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
-	cprintf("map bootstack kernel rw, user none %x\n", PADDR(bootstack));
+	//cprintf("map bootstack kernel rw, user none %x\n", PADDR(bootstack));
 
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
@@ -280,7 +280,7 @@ mem_init_mp(void)
 	// LAB 4: Your code here:
 	int i;
 	for (i = 0; i < NCPU; ++i) {
-		cprintf("percpu_kstacks[%d]: %x\n", i, percpu_kstacks[i]);
+		//cprintf("percpu_kstacks[%d]: %x\n", i, percpu_kstacks[i]);
 		boot_map_region(kern_pgdir,
 			KSTACKTOP - KSTKSIZE - i * (KSTKSIZE + KSTKGAP),
 			KSTKSIZE,
@@ -336,7 +336,7 @@ page_init(void)
 	}
 
 	int em = (int)ROUNDUP(PADDR(boot_alloc(0)), PGSIZE) / PGSIZE;
-	cprintf("em:%d\n", em);
+	//cprintf("em:%d\n", em);
 	for (i = em; i < npages; i++) {
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
@@ -964,7 +964,6 @@ check_page(void)
 
 	// should be able to map pp2 at PGSIZE because pp0 is already allocated for page table
 	assert(page_insert(kern_pgdir, pp2, (void*) PGSIZE, PTE_W) == 0);
-	cprintf("assert %x, %x\n", check_va2pa(kern_pgdir, PGSIZE), page2pa(pp2));
 	assert(check_va2pa(kern_pgdir, PGSIZE) == page2pa(pp2));
 	assert(pp2->pp_ref == 1);
 
