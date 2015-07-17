@@ -218,17 +218,17 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
 	if (tf->tf_trapno == T_PGFLT) {
-		cprintf("PAGE FAULT\n");
+		//cprintf("PAGE FAULT\n");
 		page_fault_handler(tf);
 		return;
 	}
 	if (tf->tf_trapno == T_BRKPT) {
-		cprintf("BREAK POINT\n");
+		//cprintf("BREAK POINT\n");
 		monitor(tf);
 		return;
 	}
 	if (tf->tf_trapno == T_SYSCALL) {
-		cprintf("SYSTEM CALL\n");
+		//cprintf("SYSTEM CALL\n");
 		tf->tf_regs.reg_eax = 
 			syscall(tf->tf_regs.reg_eax, tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx,
 				tf->tf_regs.reg_ebx, tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
@@ -284,6 +284,8 @@ trap(struct Trapframe *tf)
 		// Acquire the big kernel lock before doing any
 		// serious kernel work.
 		// LAB 4: Your code here.
+		lock_kernel();
+
 		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie

@@ -491,7 +491,7 @@ env_pop_tf(struct Trapframe *tf)
 {
 	// Record the CPU we are running on for user-space debugging
 	curenv->env_cpunum = cpunum();
-
+	unlock_kernel();
 	__asm __volatile("movl %0,%%esp\n"
 		"\tpopal\n"
 		"\tpopl %%es\n"
@@ -529,7 +529,7 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
-	cprintf("\n");
+	//cprintf("\n");
 	if (curenv != e) {
 		curenv = e;
 		e->env_status = ENV_RUNNING;
@@ -537,7 +537,7 @@ env_run(struct Env *e)
 		lcr3(PADDR(e->env_pgdir));
 	}
 	env_pop_tf(&e->env_tf);
-	cprintf("%s %d\n", __FILE__, __LINE__);
+	//cprintf("%s %d\n", __FILE__, __LINE__);
 	//panic("env_run not yet implemented");
 }
 
