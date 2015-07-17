@@ -374,7 +374,7 @@ load_icode(struct Env *e, uint8_t *binary)
 			memset((void *)ph->p_va, 0, ph->p_memsz);
 			memcpy((void *)ph->p_va, binary+ph->p_offset, ph->p_filesz);
 			//but I'm curious about how exactly p_memsz and p_filesz differs
-			cprintf("p_memsz: %x, p_filesz: %x\n", ph->p_memsz, ph->p_filesz);
+			//cprintf("p_memsz: %x, p_filesz: %x\n", ph->p_memsz, ph->p_filesz);
 		}
 	//we can use this because kern_pgdir is a subset of e->env_pgdir
 	lcr3(PADDR(kern_pgdir));
@@ -531,6 +531,8 @@ env_run(struct Env *e)
 	// LAB 3: Your code here.
 	//cprintf("\n");
 	if (curenv != e) {
+		if (curenv && curenv->env_status == ENV_RUNNING)
+			curenv->env_status = ENV_RUNNABLE;
 		curenv = e;
 		e->env_status = ENV_RUNNING;
 		e->env_runs++;
