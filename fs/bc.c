@@ -89,7 +89,7 @@ flush_block(void *addr)
 	//panic("flush_block not implemented");
 	addr = ROUNDDOWN(addr, PGSIZE);
 	if(!va_is_mapped(addr) || !va_is_dirty(addr)){
-		cprintf("this block is no need to flush\n");
+		//cprintf("this block is no need to flush\n");
 		return;
 	}
 
