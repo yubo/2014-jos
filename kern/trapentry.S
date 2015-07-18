@@ -98,6 +98,22 @@ funs:
 .data
 	.space 124
 .text
+	noec(th32, 32)
+	noec(th33, 33)
+	noec(th34, 34)
+	noec(th35, 35)
+	noec(th36, 36)
+	noec(th37, 37)
+	noec(th38, 38)
+	noec(th39, 39)
+	noec(th40, 40)
+	noec(th41, 41)
+	noec(th42, 42)
+	noec(th43, 43)
+	noec(th44, 44)
+	noec(th45, 45)
+	noec(th46, 46)
+	noec(th47, 47)
 	noec(th48, 48)
 
 /*
