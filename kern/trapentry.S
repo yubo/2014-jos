@@ -96,7 +96,7 @@ funs:
 	zhanwei()
 	noec(th16, 16)
 .data
-	.space 124
+	.space 60
 .text
 	noec(th32, 32)
 	noec(th33, 33)
