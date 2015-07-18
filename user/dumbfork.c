@@ -14,7 +14,7 @@ umain(int argc, char **argv)
 
 	// fork a child process
 	who = dumbfork();
-
+	cprintf("who am i: %x\n", who);
 	// print a message and yield to the other a few times
 	for (i = 0; i < (who ? 10 : 20); i++) {
 		cprintf("%d: I am the %s!\n", i, who ? "parent" : "child");
@@ -51,6 +51,7 @@ dumbfork(void)
 	// except that in the child, this "fake" call to sys_exofork()
 	// will return 0 instead of the envid of the child.
 	envid = sys_exofork();
+	cprintf("envid: %x\n", envid);
 	if (envid < 0)
 		panic("sys_exofork: %e", envid);
 	if (envid == 0) {
