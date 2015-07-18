@@ -81,7 +81,7 @@ flush_block(void *addr)
 	uint32_t blockno = ((uint32_t)addr - DISKMAP) / BLKSIZE;
 	int r;
 
-	cprintf("flush_block enter blksize %d\n", BLKSIZE);
+	//cprintf("flush_block enter blksize %d\n", BLKSIZE);
 	if (addr < (void*)DISKMAP || addr >= (void*)(DISKMAP + DISKSIZE))
 		panic("flush_block of bad va %08x\n", addr);
 
@@ -99,7 +99,7 @@ flush_block(void *addr)
 	if ((r = sys_page_map(0, addr, 0, 
 					addr, uvpt[PGNUM(addr)] & PTE_SYSCALL)) < 0)
 		panic("in flush_block, sys_page_map: %e\n", r);
-	cprintf("flush_block leave\n");
+	//cprintf("flush_block leave\n");
 
 }
 
