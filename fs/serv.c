@@ -9,7 +9,7 @@
 #include "fs.h"
 
 
-#define debug 0
+#define debug 1
 
 // The file system server maintains three structures
 // for each open file.
@@ -209,12 +209,28 @@ serve_read(envid_t envid, union Fsipc *ipc)
 {
 	struct Fsreq_read *req = &ipc->read;
 	struct Fsret_read *ret = &ipc->readRet;
+	int r;
+	struct OpenFile* o;
 
 	if (debug)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// Lab 5: Your code here:
-	return 0;
+    r = openfile_lookup(envid, req->req_fileid, &o);
+    if (r < 0) {
+        cprintf("serve_read: failed to lookup open file id %e\n", r);
+        return r;
+    }
+
+    r = file_read(o->o_file, (void *) ret->ret_buf, 
+			MIN(req->req_n, sizeof ret->ret_buf), 
+			o->o_fd->fd_offset);
+    if (r > 0) {
+        o->o_fd->fd_offset += r;
+    }
+    cprintf("serve_read return %d\n", r);
+
+	return r;
 }
 
 
@@ -340,7 +356,7 @@ umain(int argc, char **argv)
 
 	serve_init();
 	fs_init();
-        fs_test();
+	fs_test();
 	serve();
 }
 

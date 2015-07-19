@@ -149,7 +149,7 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 	// LAB 5: Your code here.
 	//panic("file_block_walk not implemented");
 	uint32_t bn;
-
+	
 	if (filebno < NDIRECT) {
 		*ppdiskbno = &f->f_direct[filebno];
 	} else if (filebno < (NINDIRECT + NDIRECT)) {
@@ -188,18 +188,18 @@ file_get_block(struct File *f, uint32_t filebno, char **blk)
        // LAB 5: Your code here.
        //panic("file_get_block not implemented");
 	uint32_t *bn;
-	uint32_t err;
+	int r;
 	
-	err = file_block_walk(f, filebno, &bn, 1);
-	if (err < 0)
-		return err;
+	r = file_block_walk(f, filebno, &bn, 1);
+	if (r < 0)
+		return r;
 
 	if (!*bn) { 
-        uint32_t block_no = alloc_block();
-		if (block_no < 0) {
+        r = alloc_block();
+		if (r < 0) {
 			return -E_NO_DISK;
         }
-	    *bn = block_no;
+	    *bn = r;
 	}
 
 	*blk = (char *) diskaddr(*bn);

@@ -190,16 +190,22 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	// LAB 4: Your code here.
 	struct Env *e; 
 	int ret = envid2env(envid, &e, 1);
-	if (ret) return ret;	//bad_env
+
+	if (ret) 
+		return ret;	//bad_env
+
 	// cprintf("good\n");
-	if (va >= (void*)UTOP) return -E_INVAL;
+	if (va >= (void*)UTOP) 
+		return -E_INVAL;
+
 	int flag = PTE_U|PTE_P;
-	if ((perm & flag) != flag) return -E_INVAL;
-	// cprintf("good\n");
+	if ((perm & flag) != flag) 
+		return -E_INVAL;
+
 	struct PageInfo *pg = page_alloc(1);//init to zero
-	if (!pg) return -E_NO_MEM;
-	// cprintf("good\n");
-	pg->pp_ref++;
+	if (!pg) 
+		return -E_NO_MEM;
+
 	ret = page_insert(e->env_pgdir, pg, va, perm);
 	if (ret) {
 		page_free(pg);
@@ -340,21 +346,48 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	//cprintf("sys_ipc_try_send envid: %x, value: %x, srcva: %x, perm: %x\n", envid, value, srcva, perm);
+	cprintf("sys_ipc_try_send envid: %x, value: %x, srcva: %x, perm: %x\n", 
+			envid, value, srcva, perm);
 	struct Env *e;
 	int ret = envid2env(envid, &e, 0);
-	if (ret) return ret;//bad env
-	if (!e->env_ipc_recving) return -E_IPC_NOT_RECV;
-	if (srcva < (void*)UTOP) {
+	if (ret) 
+		return ret;//bad env
+
+	if (!e->env_ipc_recving) 
+		return -E_IPC_NOT_RECV;
+
+	if ((uint32_t)srcva < UTOP) {
 		pte_t *pte;
 		struct PageInfo *pg = page_lookup(curenv->env_pgdir, srcva, &pte);
-		if (!pg) return -E_INVAL;
-		if ((*pte & perm) != perm) return -E_INVAL;
-		if ((perm & PTE_W) && !(*pte & PTE_W)) return -E_INVAL;
-		if (srcva != ROUNDDOWN(srcva, PGSIZE)) return -E_INVAL;
+		if (!pg){
+			return -E_INVAL;
+		} 
+
+		/*
+		if ((*pte & perm) != perm){
+			cprintf("(*pte & perm) != perm\n");
+			cprintf("*pte:0x%x, perm:0x%x\n", *pte, perm);
+			return -E_INVAL;
+		}
+		*/
+
+		if ((perm & PTE_W) && !(*pte & PTE_W)){
+			cprintf("(perm & PTE_W) && !(*pte & PTE_W)\n");
+			cprintf("*pte:0x%x, perm:0x%x\n", *pte, perm);
+			return -E_INVAL;
+		}
+
+		if (srcva != ROUNDDOWN(srcva, PGSIZE)) {
+			cprintf("srcva != ROUNDDOWN(srcva, PGSIZE) %x\n", srcva);
+			return -E_INVAL;
+		}
+
 		if (e->env_ipc_dstva < (void*)UTOP) {
 			ret = page_insert(e->env_pgdir, pg, e->env_ipc_dstva, perm);
-			if (ret) return ret;
+			if (ret) {
+				cprintf("sys_ipc_try_send, page_insert ret: %d\n", ret);
+				return ret;
+			}
 			e->env_ipc_perm = perm;
 		}
 	}
@@ -382,10 +415,10 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	//cprintf("sys_ipc_recv dstva: %xi\n", dstva);
-	if (dstva < (void*)UTOP) 
-		if (dstva != ROUNDDOWN(dstva, PGSIZE)) 
-			return -E_INVAL;
+	if (dstva < (void*)UTOP && 
+			dstva != ROUNDDOWN(dstva, PGSIZE))
+		return -E_INVAL;
+
 	curenv->env_ipc_recving = 1;
 	curenv->env_status = ENV_NOT_RUNNABLE;
 	curenv->env_ipc_dstva = dstva;
