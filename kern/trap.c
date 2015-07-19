@@ -254,6 +254,7 @@ trap_dispatch(struct Trapframe *tf)
 	// LAB 4: Your code here.
 	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
 		// cprintf("Timer\n");
+		time_tick();
 		lapic_eoi();
 		sched_yield();
 		return;
@@ -264,6 +265,7 @@ trap_dispatch(struct Trapframe *tf)
 	// Be careful! In multiprocessors, clock interrupts are
 	// triggered on every CPU.
 	// LAB 6: Your code here.
+	//
 
 
 	// Handle keyboard and serial interrupts.

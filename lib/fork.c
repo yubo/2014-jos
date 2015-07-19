@@ -152,7 +152,7 @@ fork(void)
 }
 
 // Challenge!
-int
+envid_t
 sfork(void)
 {
 	panic("sfork not implemented");
