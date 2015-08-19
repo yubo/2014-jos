@@ -2,6 +2,7 @@
 #define JOS_KERN_PCI_H
 
 #include <inc/types.h>
+#include <kern/pci_ids.h>
 
 // PCI subsystem interface
 enum { pci_res_bus, pci_res_mem, pci_res_io, pci_res_max };
