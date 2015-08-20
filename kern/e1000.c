@@ -2,13 +2,15 @@
 #include <kern/pmap.h>
 #include <inc/string.h>
 #include <inc/error.h>
+#include <netif/etharp.h>
 
 struct e1000_tx_desc tx_desc_array[E1000_TXDESC] __attribute__ ((aligned (16)));
 struct tx_pkt tx_pkt_bufs[E1000_TXDESC];
 
-struct e1000_rx_desc rcv_desc_array[E1000_RCVDESC] __attribute__ ((aligned (16)));
-struct rcv_pkt rcv_pkt_bufs[E1000_RCVDESC];
+struct e1000_rx_desc rx_desc_array[E1000_RXDESC] __attribute__ ((aligned (16)));
+struct rx_pkt rx_pkt_bufs[E1000_RXDESC];
 
+static void hexdump(const char *prefix, const void *data, int len);
 
 #define	defreg(x)	x = (E1000_##x>>2)
 enum {
@@ -23,7 +25,7 @@ enum {
 	defreg(TPR),	defreg(TPT),	defreg(TXDCTL),	defreg(WUFC),
 	defreg(RA),		defreg(MTA),	defreg(CRCERRS),defreg(VFTA),
 	defreg(VET),    defreg(RDTR),   defreg(RADV),   defreg(TADV),
-	defreg(ITR),    defreg(TIPG),
+	defreg(ITR),    defreg(TIPG),   defreg(RXERRC),
 };
 
 
@@ -48,14 +50,14 @@ e1000_attach(struct pci_func *pcif)
 	memset(tx_pkt_bufs, 0x0, sizeof(struct tx_pkt) * E1000_TXDESC);
 	for (i = 0; i < E1000_TXDESC; i++) {
 		tx_desc_array[i].buffer_addr = PADDR(tx_pkt_bufs[i].buf);
-		tx_desc_array[i].upper.fields.status |= E1000_TXD_STAT_DD;
+		tx_desc_array[i].upper.data |= E1000_TXD_STAT_DD;
 	}
 
 	// Initialize rcv desc buffer array
-	memset(rcv_desc_array, 0x0, sizeof(struct e1000_rx_desc) * E1000_RCVDESC);
-	memset(rcv_pkt_bufs, 0x0, sizeof(struct rcv_pkt) * E1000_RCVDESC);
-	for (i = 0; i < E1000_RCVDESC; i++) {
-		rcv_desc_array[i].buffer_addr = PADDR(rcv_pkt_bufs[i].buf);
+	memset(rx_desc_array, 0x0, sizeof(struct e1000_rx_desc) * E1000_RXDESC);
+	memset(rx_pkt_bufs, 0x0, sizeof(struct rx_pkt) * E1000_RXDESC);
+	for (i = 0; i < E1000_RXDESC; i++) {
+		rx_desc_array[i].buffer_addr = PADDR(rx_pkt_bufs[i].buf);
 	}
 
 	/* Transmit initialization */
@@ -84,54 +86,53 @@ e1000_attach(struct pci_func *pcif)
 	e1000[TIPG] |= (0x4) << 10; // IPGR1
 	e1000[TIPG] |= 0xA; // IPGR
 
-#define RAL RA
-#define RAH (RA+1)
 	/* Receive Initialization */
 	// Program the Receive Address Registers
-	e1000[EERD] = 0x0;
-	e1000[EERD] |= E1000_EERD_START;
-	while (!(e1000[EERD] & E1000_EERD_DONE));
-	e1000[RAL] = e1000[EERD] >> 16;
-
-	e1000[EERD] = 0x1 << 8;
-	e1000[EERD] |= E1000_EERD_START;
-	while (!(e1000[EERD] & E1000_EERD_DONE));
-	e1000[RAL] |= e1000[EERD] & 0xffff0000;
-
-	e1000[EERD] = 0x2 << 8;
-	e1000[EERD] |= E1000_EERD_START;
-	while (!(e1000[EERD] & E1000_EERD_DONE));
-	e1000[RAH] = e1000[EERD] >> 16;
-
-	e1000[RAH] |= 0x1 << 31;
+	
+	e1000[RA] = 0x12005452;
+	e1000[RA+1] = (e1000[RA+1] & 0xffff0000) | 0x5634;
 
 	// Program the Receive Descriptor Base Address Registers
-	e1000[RDBAL] = PADDR(rcv_desc_array);
+	e1000[RDBAL] = PADDR(rx_desc_array);
     e1000[RDBAH] = 0x0;
 
 	// Set the Receive Descriptor Length Register
-	e1000[RDLEN] = sizeof(struct e1000_rx_desc) * E1000_RCVDESC;
+	e1000[RDLEN] = sizeof(struct e1000_rx_desc) * E1000_RXDESC;
 
-        // Set the Receive Descriptor Head and Tail Registers
+    // Set the Receive Descriptor Head and Tail Registers
 	e1000[RDH] = 0x0;
-	e1000[RDT] = 0x0;
+	e1000[RDT] = E1000_RXDESC - 1;
+	e1000[MTA] = 0x0;
 
 	// Initialize the Receive Control Register
-	e1000[RCTL] |= E1000_RCTL_EN;
-	e1000[RCTL] &= ~E1000_RCTL_LPE;
-	e1000[RCTL] &= ~E1000_RCTL_LBM_TCVR;
-	e1000[RCTL] &= ~(E1000_RCTL_RDMTS_QUAT | E1000_RCTL_RDMTS_EIGTH);
-	e1000[RCTL] &= ~E1000_RCTL_MO_1;
-	e1000[RCTL] &= ~E1000_RCTL_MO_2;
-	e1000[RCTL] &= ~E1000_RCTL_MO_3;
-	e1000[RCTL] |= E1000_RCTL_BAM;
-	e1000[RCTL] &= ~E1000_RCTL_SZ_2048; // 2048 byte size
-	e1000[RCTL] |= E1000_RCTL_SECRC;
-
-//	for(i = 0; i<128; i++)
-//		e1000_transmit("1234567890123456", 16);
+	e1000[RCTL] = E1000_RCTL_BAM | 
+		E1000_RCTL_SZ_2048 | 
+		E1000_RCTL_SECRC | 
+		E1000_RCTL_EN;
 
 	return 0;
+}
+
+
+static void
+hexdump(const char *prefix, const void *data, int len)
+{
+	int i;
+	char buf[80];
+	char *end = buf + sizeof(buf);
+	char *out = NULL;
+	for (i = 0; i < len; i++) {
+		if (i % 16 == 0)
+			out = buf + snprintf(buf, end - buf,
+					     "%s%04x   ", prefix, i);
+		out += snprintf(out, end - out, "%02x", ((uint8_t*)data)[i]);
+		if (i % 16 == 15 || i == len - 1)
+			cprintf("%.*s\n", out - buf, buf);
+		if (i % 2 == 1)
+			*(out++) = ' ';
+		if (i % 16 == 7)
+			*(out++) = ' ';
+	}
 }
 
 int
@@ -149,8 +150,10 @@ e1000_transmit(char *data, int len)
 		tx_desc_array[tdt].lower.flags.length = len;
 
 		tx_desc_array[tdt].upper.data &= ~E1000_TXD_STAT_DD;
-		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
+		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_EOP;
+		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_RS;
 
+		//hexdump("tx dump:", data, len);
 		e1000[TDT] = (tdt + 1) % E1000_TXDESC;
 	}
 	else { // tx queue is full!
@@ -164,18 +167,20 @@ int
 e1000_receive(char *data)
 {
 	uint32_t rdt, len;
-	rdt = e1000[E1000_RDT];
+	rdt = (e1000[RDT] + 1) % E1000_RXDESC;
 	
-	if (rcv_desc_array[rdt].status & E1000_RXD_STAT_DD) {
-		if (!(rcv_desc_array[rdt].status & E1000_RXD_STAT_EOP)) {
+	if (rx_desc_array[rdt].status & E1000_RXD_STAT_DD) {
+		if (!(rx_desc_array[rdt].status & E1000_RXD_STAT_EOP)) {
 			panic("Don't allow jumbo frames!\n");
 		}
-		len = rcv_desc_array[rdt].length;
+		len = rx_desc_array[rdt].length;
 		
-		memmove(data, rcv_pkt_bufs[rdt].buf, len);
-		rcv_desc_array[rdt].status &= ~E1000_RXD_STAT_DD;
-		rcv_desc_array[rdt].status &= ~E1000_RXD_STAT_EOP;
-		e1000[E1000_RDT] = (rdt + 1) % E1000_RCVDESC;
+		memmove(data, rx_pkt_bufs[rdt].buf, len);
+		//hexdump("rx dump:", data, len);
+
+		rx_desc_array[rdt].status &= ~E1000_RXD_STAT_DD;
+		rx_desc_array[rdt].status &= ~E1000_RXD_STAT_EOP;
+		e1000[RDT] = rdt;
 
 		return len;
 	}

@@ -7,9 +7,9 @@
 volatile uint32_t *e1000; // MMIO address to access E1000 BAR
 
 #define E1000_TXDESC 64
-#define E1000_RCVDESC 64
+#define E1000_RXDESC 64
 #define TX_PKT_SIZE 1518
-#define RCV_PKT_SIZE 2048
+#define RX_PKT_SIZE 2048
 
 #define E1000_EERD_START 0x01
 #define E1000_EERD_DONE  0x10
@@ -19,9 +19,9 @@ struct tx_pkt
 	uint8_t buf[TX_PKT_SIZE];
 } __attribute__((packed));
 
-struct rcv_pkt
+struct rx_pkt
 {
-	uint8_t buf[RCV_PKT_SIZE];
+	uint8_t buf[RX_PKT_SIZE];
 } __attribute__((packed));
 
 
