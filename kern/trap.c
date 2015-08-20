@@ -266,6 +266,12 @@ trap_dispatch(struct Trapframe *tf)
 	// triggered on every CPU.
 	// LAB 6: Your code here.
 	//
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER){
+		time_tick();
+		lapic_eoi();
+		sched_yield();
+		return;
+	}
 
 
 	// Handle keyboard and serial interrupts.

@@ -11,6 +11,9 @@ volatile uint32_t *e1000; // MMIO address to access E1000 BAR
 #define TX_PKT_SIZE 1518
 #define RCV_PKT_SIZE 2048
 
+#define E1000_EERD_START 0x01
+#define E1000_EERD_DONE  0x10
+
 struct tx_pkt
 {
 	uint8_t buf[TX_PKT_SIZE];
@@ -23,5 +26,6 @@ struct rcv_pkt
 
 
 int e1000_attach(struct pci_func *pcif);
+int e1000_transmit(char *data, int len);
 
 #endif	// JOS_KERN_E1000_H

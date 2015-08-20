@@ -26,6 +26,11 @@ enum {
 	E_NOT_EXEC	,	// File not a valid executable
 	E_NOT_SUPP	,	// Operation not supported
 
+	// E1000 error codes
+	E_TX_FULL     ,   // Transfer queue is full
+	E_RCV_EMPTY   ,   // Receive queue is empty
+	E_PKT_TOO_LONG,   // Packet size is too big
+
 	MAXERROR
 };
 

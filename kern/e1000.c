@@ -1,6 +1,7 @@
 #include <kern/e1000.h>
 #include <kern/pmap.h>
 #include <inc/string.h>
+#include <inc/error.h>
 
 struct e1000_tx_desc tx_desc_array[E1000_TXDESC] __attribute__ ((aligned (16)));
 struct tx_pkt tx_pkt_bufs[E1000_TXDESC];
@@ -11,18 +12,18 @@ struct rcv_pkt rcv_pkt_bufs[E1000_RCVDESC];
 
 #define	defreg(x)	x = (E1000_##x>>2)
 enum {
-    defreg(CTRL),	defreg(EECD),	defreg(EERD),	defreg(GPRC),
-    defreg(GPTC),	defreg(ICR),	defreg(ICS),	defreg(IMC),
-    defreg(IMS),	defreg(LEDCTL),	defreg(MANC),	defreg(MDIC),
-    defreg(MPC),	defreg(PBA),	defreg(RCTL),	defreg(RDBAH),
-    defreg(RDBAL),	defreg(RDH),	defreg(RDLEN),	defreg(RDT),
-    defreg(STATUS),	defreg(SWSM),	defreg(TCTL),	defreg(TDBAH),
-    defreg(TDBAL),	defreg(TDH),	defreg(TDLEN),	defreg(TDT),
-    defreg(TORH),	defreg(TORL),	defreg(TOTH),	defreg(TOTL),
-    defreg(TPR),	defreg(TPT),	defreg(TXDCTL),	defreg(WUFC),
-    defreg(RA),		defreg(MTA),	defreg(CRCERRS),defreg(VFTA),
-    defreg(VET),    defreg(RDTR),   defreg(RADV),   defreg(TADV),
-    defreg(ITR),    defreg(TIPG),
+	defreg(CTRL),	defreg(EECD),	defreg(EERD),	defreg(GPRC),
+	defreg(GPTC),	defreg(ICR),	defreg(ICS),	defreg(IMC),
+	defreg(IMS),	defreg(LEDCTL),	defreg(MANC),	defreg(MDIC),
+	defreg(MPC),	defreg(PBA),	defreg(RCTL),	defreg(RDBAH),
+	defreg(RDBAL),	defreg(RDH),	defreg(RDLEN),	defreg(RDT),
+	defreg(STATUS),	defreg(SWSM),	defreg(TCTL),	defreg(TDBAH),
+	defreg(TDBAL),	defreg(TDH),	defreg(TDLEN),	defreg(TDT),
+	defreg(TORH),	defreg(TORL),	defreg(TOTH),	defreg(TOTL),
+	defreg(TPR),	defreg(TPT),	defreg(TXDCTL),	defreg(WUFC),
+	defreg(RA),		defreg(MTA),	defreg(CRCERRS),defreg(VFTA),
+	defreg(VET),    defreg(RDTR),   defreg(RADV),   defreg(TADV),
+	defreg(ITR),    defreg(TIPG),
 };
 
 
@@ -83,7 +84,82 @@ e1000_attach(struct pci_func *pcif)
 	e1000[TIPG] |= (0x4) << 10; // IPGR1
 	e1000[TIPG] |= 0xA; // IPGR
 
+#if 0
+	/* Receive Initialization */
+	// Program the Receive Address Registers
+	e1000[EERD] = 0x0;
+	e1000[EERD] |= E1000_EERD_START;
+	while (!(e1000[EERD] & E1000_EERD_DONE));
+	e1000[RA] = e1000[EERD] >> 16;
+
+	e1000[EERD] = 0x1 << 8;
+	e1000[EERD] |= E1000_EERD_START;
+	while (!(e1000[EERD] & E1000_EERD_DONE));
+	e1000[RA] |= e1000[EERD] & 0xffff0000;
+
+	e1000[EERD] = 0x2 << 8;
+	e1000[EERD] |= E1000_EERD_START;
+	while (!(e1000[EERD] & E1000_EERD_DONE));
+	e1000[RA+1] = e1000[EERD] >> 16;
+
+	e1000[RA+1] |= 0x1 << 31;
+
+	// Program the Receive Descriptor Base Address Registers
+	e1000[RDBAL] = PADDR(rcv_desc_array);
+    e1000[RDBAH] = 0x0;
+
+	// Set the Receive Descriptor Length Register
+	e1000[RDLEN] = sizeof(struct e1000_rx_desc) * E1000_RCVDESC;
+
+        // Set the Receive Descriptor Head and Tail Registers
+	e1000[RDH] = 0x0;
+	e1000[RDT] = 0x0;
+
+	// Initialize the Receive Control Register
+	e1000[RCTL] |= E1000_RCTL_EN;
+	e1000[RCTL] &= ~E1000_RCTL_LPE;
+	e1000[RCTL] &= ~E1000_RCTL_LBM_TCVR;
+	e1000[RCTL] &= ~(E1000_RCTL_RDMTS_QUAT | E1000_RCTL_RDMTS_EIGTH);
+	e1000[RCTL] &= ~E1000_RCTL_MO_1;
+	e1000[RCTL] &= ~E1000_RCTL_MO_2;
+	e1000[RCTL] &= ~E1000_RCTL_MO_3;
+	e1000[RCTL] |= E1000_RCTL_BAM;
+	e1000[RCTL] &= ~E1000_RCTL_SZ_2048; // 2048 byte size
+	e1000[RCTL] |= E1000_RCTL_SECRC;
+#endif
+	for(i = 0; i<128; i++)
+		e1000_transmit("1234567890123456", 16);
 
 	return 0;
 }
+
+int
+e1000_transmit(char *data, int len)
+{
+	if (len > TX_PKT_SIZE) {
+		return -E_PKT_TOO_LONG;
+	}
+
+	uint32_t tdt = e1000[TDT];
+
+	// Check if next tx desc is free
+	if (tx_desc_array[tdt].upper.fields.status & E1000_TXD_STAT_DD) {
+		memmove(tx_pkt_bufs[tdt].buf, data, len);
+		tx_desc_array[tdt].lower.flags.length = len;
+
+		//HEXDUMP("tx dump:", data, len);
+
+		tx_desc_array[tdt].upper.fields.status &= ~E1000_TXD_STAT_DD;
+		tx_desc_array[tdt].lower.flags.cmd |= E1000_TXD_CMD_RS;
+		tx_desc_array[tdt].lower.flags.cmd |= E1000_TXD_CMD_EOP;
+
+		e1000[TDT] = (tdt + 1) % E1000_TXDESC;
+	}
+	else { // tx queue is full!
+		return -E_TX_FULL;
+	}
+
+	return 0;
+}
+
 
