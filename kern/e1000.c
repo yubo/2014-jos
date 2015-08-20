@@ -84,25 +84,26 @@ e1000_attach(struct pci_func *pcif)
 	e1000[TIPG] |= (0x4) << 10; // IPGR1
 	e1000[TIPG] |= 0xA; // IPGR
 
-#if 0
+#define RAL RA
+#define RAH (RA+1)
 	/* Receive Initialization */
 	// Program the Receive Address Registers
 	e1000[EERD] = 0x0;
 	e1000[EERD] |= E1000_EERD_START;
 	while (!(e1000[EERD] & E1000_EERD_DONE));
-	e1000[RA] = e1000[EERD] >> 16;
+	e1000[RAL] = e1000[EERD] >> 16;
 
 	e1000[EERD] = 0x1 << 8;
 	e1000[EERD] |= E1000_EERD_START;
 	while (!(e1000[EERD] & E1000_EERD_DONE));
-	e1000[RA] |= e1000[EERD] & 0xffff0000;
+	e1000[RAL] |= e1000[EERD] & 0xffff0000;
 
 	e1000[EERD] = 0x2 << 8;
 	e1000[EERD] |= E1000_EERD_START;
 	while (!(e1000[EERD] & E1000_EERD_DONE));
-	e1000[RA+1] = e1000[EERD] >> 16;
+	e1000[RAH] = e1000[EERD] >> 16;
 
-	e1000[RA+1] |= 0x1 << 31;
+	e1000[RAH] |= 0x1 << 31;
 
 	// Program the Receive Descriptor Base Address Registers
 	e1000[RDBAL] = PADDR(rcv_desc_array);
@@ -126,7 +127,7 @@ e1000_attach(struct pci_func *pcif)
 	e1000[RCTL] |= E1000_RCTL_BAM;
 	e1000[RCTL] &= ~E1000_RCTL_SZ_2048; // 2048 byte size
 	e1000[RCTL] |= E1000_RCTL_SECRC;
-#endif
+
 //	for(i = 0; i<128; i++)
 //		e1000_transmit("1234567890123456", 16);
 
@@ -143,15 +144,12 @@ e1000_transmit(char *data, int len)
 	uint32_t tdt = e1000[TDT];
 
 	// Check if next tx desc is free
-	if (tx_desc_array[tdt].upper.fields.status & E1000_TXD_STAT_DD) {
+	if (tx_desc_array[tdt].upper.data & E1000_TXD_STAT_DD) {
 		memmove(tx_pkt_bufs[tdt].buf, data, len);
 		tx_desc_array[tdt].lower.flags.length = len;
 
-		//HEXDUMP("tx dump:", data, len);
-
 		tx_desc_array[tdt].upper.data &= ~E1000_TXD_STAT_DD;
-		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_RS;
-		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_EOP;
+		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
 
 		e1000[TDT] = (tdt + 1) % E1000_TXDESC;
 	}
@@ -162,4 +160,25 @@ e1000_transmit(char *data, int len)
 	return 0;
 }
 
+int
+e1000_receive(char *data)
+{
+	uint32_t rdt, len;
+	rdt = e1000[E1000_RDT];
+	
+	if (rcv_desc_array[rdt].status & E1000_RXD_STAT_DD) {
+		if (!(rcv_desc_array[rdt].status & E1000_RXD_STAT_EOP)) {
+			panic("Don't allow jumbo frames!\n");
+		}
+		len = rcv_desc_array[rdt].length;
+		
+		memmove(data, rcv_pkt_bufs[rdt].buf, len);
+		rcv_desc_array[rdt].status &= ~E1000_RXD_STAT_DD;
+		rcv_desc_array[rdt].status &= ~E1000_RXD_STAT_EOP;
+		e1000[E1000_RDT] = (rdt + 1) % E1000_RCVDESC;
 
+		return len;
+	}
+
+	return -E_RCV_EMPTY;
+}
