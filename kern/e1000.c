@@ -127,8 +127,8 @@ e1000_attach(struct pci_func *pcif)
 	e1000[RCTL] &= ~E1000_RCTL_SZ_2048; // 2048 byte size
 	e1000[RCTL] |= E1000_RCTL_SECRC;
 #endif
-	for(i = 0; i<128; i++)
-		e1000_transmit("1234567890123456", 16);
+//	for(i = 0; i<128; i++)
+//		e1000_transmit("1234567890123456", 16);
 
 	return 0;
 }
@@ -149,9 +149,9 @@ e1000_transmit(char *data, int len)
 
 		//HEXDUMP("tx dump:", data, len);
 
-		tx_desc_array[tdt].upper.fields.status &= ~E1000_TXD_STAT_DD;
-		tx_desc_array[tdt].lower.flags.cmd |= E1000_TXD_CMD_RS;
-		tx_desc_array[tdt].lower.flags.cmd |= E1000_TXD_CMD_EOP;
+		tx_desc_array[tdt].upper.data &= ~E1000_TXD_STAT_DD;
+		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_RS;
+		tx_desc_array[tdt].lower.data |= E1000_TXD_CMD_EOP;
 
 		e1000[TDT] = (tdt + 1) % E1000_TXDESC;
 	}
