@@ -7,7 +7,7 @@
 volatile uint32_t *e1000; // MMIO address to access E1000 BAR
 
 #define E1000_TXDESC 64
-#define E1000_RXDESC 64
+#define E1000_RXDESC 128
 #define TX_PKT_SIZE 1518
 #define RX_PKT_SIZE 2048
 
